@@ -11,7 +11,6 @@
 
 File dataFile;
 File configFile;
-#define SEALEVELPRESSURE_HPA 1013.25
 #define TVC_X_PIN 2
 #define TVC_Y_PIN 3
 #define IMU_INTERRUPT_PIN 14
@@ -20,15 +19,18 @@ File configFile;
 #define PYRO_2_DETECT_PIN 22
 #define PYRO_1_FIRE_PIN 5
 #define PYRO_2_FIRE_PIN 6
-
 #define SD_CHIP_SELECT_PIN 10
 
-#define IMU_RATE_MS 10
+#define IMU_UPDATE_RATE_MS 10;
+#define ALTIMETER_UPDATE_RATE_MS 50;
 #define LOG_RATE_MS 10
+
 #define LOG_TIME_MS 10000
 
 #define PYRO_1_THRESHOLD 200
 #define PYRO_2_THRESHOLD 200
+
+#define SEALEVELPRESSURE_HPA 1013.25
 
 Metro IMUMetro = Metro(10);
 Metro idleBuzzerMetro = Metro(1000);
@@ -39,10 +41,8 @@ Chrono IMUChrono;
 Chrono altimeterChrono;
 Chrono printChrono;
 
-
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 Adafruit_BMP3XX bmp;
-
 
 enum state {
   PAD_IDLE,
@@ -148,8 +148,8 @@ void initSD() {
   //    Serial.println("Config File open Success. Downloading Data");
   //    downloadConfig();
   //  }
-
-  dataFile = SD.open("data.txt", FILE_WRITE);
+  SD.remove("data1.txt");
+  dataFile = SD.open("data1.txt", FILE_WRITE);
 
   if (!dataFile) {
     Serial.print(" SD dataFile open failed!");
@@ -257,9 +257,9 @@ void initAltimeter() {
   }
 
   // Set up oversampling and filter initialization
-  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_16X);
-  bmp.setPressureOversampling(BMP3_OVERSAMPLING_16X);
-  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_31);
+  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setPressureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
 
   Serial.print("Altimeter Success. Reading Ground Altitude");
@@ -362,7 +362,7 @@ void saveDataToArray() {
   if (dataStep < maxSteps) {
     timeArray[dataStep] = millis() - previousMillis;
     stateArray[dataStep] = currentState;
-    dataArray[0][dataStep] = yaw;
+    dataArray[0][dataStep] = altimeter_alt_rel;
     dataArray[1][dataStep] = pitch;
     dataArray[2][dataStep] = roll;
     dataArray[3][dataStep] = x_accel;
@@ -371,8 +371,7 @@ void saveDataToArray() {
     dataArray[6][dataStep] = x_gyro;
     dataArray[7][dataStep] = y_gyro;
     dataArray[8][dataStep] = z_gyro;
-
-    dataArray[9][dataStep] = altimeter_alt_rel;
+    dataArray[9][dataStep] = yaw;
     dataStep += 1;
   }
 }
@@ -393,17 +392,17 @@ void loop() {
     case PAD_IDLE: {
         buzzerIdle();
 
-        if (IMUChrono.hasPassed(10)) {
+        if (IMUChrono.hasPassed(IMU_UPDATE_RATE_MS)) {
           IMUChrono.restart();
           updateIMU();
         }
 
-        if (altimeterChrono.hasPassed(100)) {
+        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
           altimeterChrono.restart();
           updateAltimeter();
         }
 
-        if (printChrono.hasPassed(10)) {
+        if (printChrono.hasPassed(LOG_RATE_MS)) {
           printChrono.restart();
           printData();
           saveDataToArray();
