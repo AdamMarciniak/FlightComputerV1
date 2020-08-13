@@ -8,7 +8,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <Chrono.h>
-#include <Servo.h> 
+#include <Servo.h>
 
 File dataFile;
 File configFile;
@@ -54,13 +54,141 @@ Chrono IMUChrono;
 Chrono altimeterChrono;
 Chrono printChrono;
 
+int servoRotations[108][2] = {
+  {  80  , 69  },
+  { 81  , 69  },
+  { 82  , 69  },
+  { 83  , 69  },
+  { 84  , 69  },
+  { 85  , 69  },
+  { 86  , 70  },
+  { 87  , 70  },
+  { 88  , 70  },
+  { 89  , 71  },
+  { 90  , 71  },
+  { 91  , 71  },
+  { 92  , 72  },
+  { 93  , 72  },
+  { 94  , 73  },
+  { 95  , 74  },
+  { 96  , 74  },
+  { 97  , 75  },
+  { 98  , 76  },
+  { 99  , 77  },
+  { 100 , 78  },
+  { 101 , 79  },
+  { 102 , 80  },
+  { 103 , 82  },
+  { 104 , 84  },
+  { 105 , 86  },
+  { 106 , 89  },
+  { 107 , 96  },
+  { 106 , 103 },
+  { 105 , 106 },
+  { 104 , 108 },
+  { 103 , 110 },
+  { 102 , 112 },
+  { 101 , 113 },
+  { 100 , 114 },
+  { 99  , 115 },
+  { 98  , 116 },
+  { 97  , 117 },
+  { 96  , 118 },
+  { 95  , 118 },
+  { 94  , 119 },
+  { 93  , 120 },
+  { 92  , 120 },
+  { 91  , 121 },
+  { 90  , 121 },
+  { 89  , 121 },
+  { 88  , 122 },
+  { 87  , 122 },
+  { 86  , 122 },
+  { 85  , 123 },
+  { 84  , 123 },
+  { 83  , 123 },
+  { 82  , 123 },
+  { 81  , 123 },
+  { 80  , 123 },
+  { 79  , 123 },
+  { 78  , 123 },
+  { 77  , 123 },
+  { 76  , 123 },
+  { 75  , 123 },
+  { 74  , 122 },
+  { 73  , 122 },
+  { 72  , 122 },
+  { 71  , 121 },
+  { 70  , 121 },
+  { 69  , 121 },
+  { 68  , 120 },
+  { 67  , 120 },
+  { 66  , 119 },
+  { 65  , 118 },
+  { 64  , 118 },
+  { 63  , 117 },
+  { 62  , 116 },
+  { 61  , 115 },
+  { 60  , 114 },
+  { 59  , 113 },
+  { 58  , 112 },
+  { 57  , 110 },
+  { 56  , 108 },
+  { 55  , 106 },
+  { 54  , 103 },
+  { 53  , 96  },
+  { 54  , 89  },
+  { 55  , 86  },
+  { 56  , 84  },
+  { 57  , 82  },
+  { 58  , 80  },
+  { 59  , 79  },
+  { 60  , 78  },
+  { 61  , 77  },
+  { 62  , 76  },
+  { 63  , 75  },
+  { 64  , 74  },
+  { 65  , 74  },
+  { 66  , 73  },
+  { 67  , 72  },
+  { 68  , 72  },
+  { 69  , 71  },
+  { 70  , 71  },
+  { 71  , 71  },
+  { 72  , 70  },
+  { 73  , 70  },
+  { 74  , 70  },
+  { 75  , 69  },
+  { 76  , 69  },
+  { 77  , 69  },
+  { 78  , 69  },
+  { 79  , 69  }
+};
+
+
+void rotateServos() {
+  for (int i = 0; i < 108; i += 1) {
+
+    x_servo.write(servoRotations[i][0] );
+    y_servo.write(servoRotations[i][1] );
+    delay(20);
+  }
+
+  for (int i = 0; i < 108; i += 1) {
+    x_servo.write(servoRotations[i][0] );
+    y_servo.write(servoRotations[i][1] );
+    delay(20);
+  }
+
+}
+
 void initServos() {
   x_servo.attach(X_SERVO_PIN);
   x_servo.write(X_SERVO_CENTER);
-  
+
   y_servo.attach(Y_SERVO_PIN);
   y_servo.write(Y_SERVO_CENTER);
-  
+
   delay(500);
   x_servo.write(X_SERVO_MIN);
   delay(500);
@@ -79,7 +207,12 @@ void initServos() {
   delay(500);
   y_servo.write(Y_SERVO_CENTER);
 
+  rotateServos();
+  x_servo.write(X_SERVO_CENTER);
+  y_servo.write(Y_SERVO_CENTER);
 }
+
+
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 Adafruit_BMP3XX bmp;
@@ -304,12 +437,9 @@ void initAltimeter() {
 
   Serial.print("Altimeter Success. Reading Ground Altitude");
   Serial.println();
-  delay(1000);
 
   int i = 0;
-  long altitudeAverage = 0;
-
-  while (i < 50) {
+  while (i < 20) {
     if (altimeterChrono.hasPassed(50)) {
       altimeterChrono.restart();
       if (!bmp.performReading()) {
