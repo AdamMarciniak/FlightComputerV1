@@ -17,27 +17,12 @@
 #define IMU_RATE_MS 10
 #define LOG_TIME_MS 10000
 
-void buzz(int melody[], int durations[], int melodySize){
-   for (int thisNote = 0; thisNote < melodySize; thisNote++) {
-    int noteDuration = 1000 / durations[thisNote];
-    tone(BUZZER_PIN, melody[thisNote], noteDuration);
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
-    noTone(BUZZER_PIN);
-  }
-}
+#define PYRO_1_THRESHOLD 200;
+#define PYRO_2_THRESHOLD 200;
 
-void buzzerSuccess() {
-  int melody[] = {
-    NOTE_G4, NOTE_C5, NOTE_E5, NOTE_G5, NOTE_E5, NOTE_G5
-  };
-  int noteDurations[] = {
-    12, 12, 12, 6, 12, 3
-  };
-  int melodySize = 6;
-  buzz(melody, noteDurations, melodySize);
-}
-
+Metro IMUMetro = Metro(10);
+Metro idleBuzzerMetro = Metro(1000);
+Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 
 enum state {
   PAD_IDLE,
@@ -75,15 +60,60 @@ double x_gyro, y_gyro, z_gyro;
 
 int8_t IMU_temp;
 
-
 const int maxSteps = LOG_TIME_MS / IMU_RATE_MS;
 const int numProperties = 9;
 double dataArray[numProperties][maxSteps];
 int dataStep = 0;
 
+void buzz(int melody[], int durations[], int melodySize){
+   for (int thisNote = 0; thisNote < melodySize; thisNote++) {
+    int noteDuration = 1000 / durations[thisNote];
+    tone(BUZZER_PIN, melody[thisNote], noteDuration);
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    noTone(BUZZER_PIN);
+  }
+}
 
-Metro IMUMetro = Metro(10);
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+void buzzerSuccess() {
+  int melody[] = {
+    NOTE_G4, NOTE_C5, NOTE_E5, NOTE_G5, NOTE_E5, NOTE_G5
+  };
+  int noteDurations[] = {
+    12, 12, 12, 6, 12, 3
+  };
+  int melodySize = 6;
+  buzz(melody, noteDurations, melodySize);
+}
+
+void buzzerFlightFinished() {
+  // Old spice jingle
+  int melody[] = {
+    NOTE_G5, NOTE_G5, NOTE_A5, NOTE_C6, NOTE_B5, NOTE_D6, NOTE_E6, NOTE_C6
+  };
+  int noteDurations[] = {
+    12, 12, 6, 6, 6, 12, 6, 6
+  };
+  int melodySize = 8;
+  buzz(melody, noteDurations, melodySize);
+}
+
+bool idleBuzzerState = false;
+
+void buzzerIdle() {
+  
+  if(idleBuzzerMetro.check() == 1){
+    if(idleBuzzerState == false) {
+      tone(BUZZER_PIN, NOTE_G5, 100);
+      idleBuzzerState == true;
+    } else {
+      noTone(BUZZER_PIN);
+      idleBuzzerState == false;
+    }
+  }
+}
+
+
 
 void initIMU() {
   Serial.print("Initializing IMU...   ");
@@ -179,12 +209,42 @@ void printDataArray() {
  }
 }
 
+bool pyro_1_state = false;
+bool pyro_2_state = false;
+
+bool pyro_1_detect = false;
+bool pyro_1_detect = false;
+
+bool pyro_1_fire = false;
+bool pyro_2_fire = false;
+
+
+bool checkPyros() {
+  if(analogRead(PYRO_1_DETECT_PIN) > PYRO_1_THRESHOLD){
+    pyro_1_state = true;
+  }
+
+  if(analogRead(PYRO_2_DETECT_PIN) > PYRO_2_THRESHOLD){
+    pyro_2_state = true;
+  }
+
+  if(pyro_1_state != true AND pyro_2_state != true){
+    return false;
+  } else {
+    return true;
+  }
+
+}
+
+
+
 
 void loop() {
   
 
   switch(currentState) {
     case PAD_IDLE: {
+      buzzerIdle();
       if(IMUMetro.check() == 1){
         deltaT = micros() - previousMillis;
         previousMillis = micros();
@@ -204,6 +264,7 @@ void loop() {
       if(printed == false){
         printDataArray();
         printed = true;
+        buzzerFlightFinished();
       }
       
       break;
