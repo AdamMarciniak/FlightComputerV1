@@ -8,6 +8,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <Chrono.h>
+#include <Servo.h> 
 
 File dataFile;
 File configFile;
@@ -20,9 +21,18 @@ File configFile;
 #define PYRO_1_FIRE_PIN 5
 #define PYRO_2_FIRE_PIN 6
 #define SD_CHIP_SELECT_PIN 10
+#define X_SERVO_PIN 2
+#define Y_SERVO_PIN 3
 
-#define IMU_UPDATE_RATE_MS 10;
-#define ALTIMETER_UPDATE_RATE_MS 50;
+#define X_SERVO_CENTER 80
+#define Y_SERVO_CENTER 96
+#define X_SERVO_MIN 53
+#define X_SERVO_MAX 107
+#define Y_SERVO_MIN 69
+#define Y_SERVO_MAX 123
+
+#define IMU_UPDATE_RATE_MS 10
+#define ALTIMETER_UPDATE_RATE_MS 50
 #define LOG_RATE_MS 10
 
 #define LOG_TIME_MS 10000
@@ -37,9 +47,39 @@ Metro idleBuzzerMetro = Metro(1000);
 Metro altimeterMetro = Metro(50);
 Metro printMetro = Metro(10);
 
+Servo x_servo;
+Servo y_servo;
+
 Chrono IMUChrono;
 Chrono altimeterChrono;
 Chrono printChrono;
+
+void initServos() {
+  x_servo.attach(X_SERVO_PIN);
+  x_servo.write(X_SERVO_CENTER);
+  
+  y_servo.attach(Y_SERVO_PIN);
+  y_servo.write(Y_SERVO_CENTER);
+  
+  delay(500);
+  x_servo.write(X_SERVO_MIN);
+  delay(500);
+  x_servo.write(X_SERVO_CENTER);
+  delay(500);
+  x_servo.write(X_SERVO_MAX);
+  delay(500);
+  x_servo.write(X_SERVO_CENTER);
+
+  delay(750);
+  y_servo.write(Y_SERVO_MIN);
+  delay(500);
+  y_servo.write(Y_SERVO_CENTER);
+  delay(500);
+  y_servo.write(Y_SERVO_MAX);
+  delay(500);
+  y_servo.write(Y_SERVO_CENTER);
+
+}
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
 Adafruit_BMP3XX bmp;
@@ -381,6 +421,7 @@ void setup() {
   initSD();
   initIMU();
   initAltimeter();
+  initServos();
   buzzerSuccess();
   previousMillis = millis();
   Serial.println("SETUP COMPLETE. STARTING LOOP");
