@@ -285,6 +285,12 @@ double kp, ki, kd;
 double ITerm;
 double outputSum;
 
+unsigned long lastTimex;
+double Inputx, Outputx, Setpointx;
+double errSumx, lastErrx, lastInputx;
+double ITermx;
+double outputSumx;
+
 
 #define PID_RATE_MS 10.0
 #define DIRECT 0
@@ -294,7 +300,7 @@ int pidDirection = DIRECT;
 #define P_ON_E 1
 bool pOnE = true;
 double PTerm = 0;
-
+double PTermx = 0;
 double KP, KI, KD;
 
 
@@ -395,28 +401,28 @@ void initIMU() {
 }
 
 void printData() {
-  Serial.print(deltaT);
-  Serial.print(" ");
-  Serial.print(stateStrings[currentState]);
-  Serial.print(" ");
-  Serial.print(altimeter_alt_rel);
-  Serial.print(" ");
-  Serial.print(yaw);
+//  Serial.print(deltaT);
+//  Serial.print(" ");
+//  Serial.print(stateStrings[currentState]);
+//  Serial.print(" ");
+//  Serial.print(altimeter_alt_rel);
+//  Serial.print(" ");
+//  Serial.print(yaw);
   Serial.print(" ");
   Serial.print(pitch);
   Serial.print(" ");
   Serial.print(roll);
   Serial.print(" ");
-  Serial.print(KP);
-  Serial.print(" ");
-  Serial.print(KI);
-  Serial.print(" ");
-  Serial.print(KD);
-  Serial.print(" ");
-  Serial.print(Input);
-  Serial.print(" ");
-  Serial.print(Output);
-  Serial.print(" ");
+//  Serial.print(KP);
+//  Serial.print(" ");
+//  Serial.print(KI);
+//  Serial.print(" ");
+//  Serial.print(KD);
+//  Serial.print(" ");
+//  Serial.print(Input);
+//  Serial.print(" ");
+//  Serial.print(Output);
+//  Serial.print(" ");
 
   Serial.println();
 }
@@ -658,10 +664,32 @@ void computePID(double outMax, double outMin) {
   lastErr = error;
 }
 
+void computePIDx(double outMax, double outMin) {
+
+  double error = Setpointx - Inputx;
+  double dInput = (Inputx - lastInputx);
+  outputSumx += (ki * error);
+
+  if (!pOnE) outputSumx -= kp * dInput;
+
+  if(outputSumx > outMax) outputSumx= outMax;      
+  else if(outputSumx < outMin) outputSumx= outMin; 
+
+  if (pOnE) Outputx = kp * error;
+  else Outputx = 0;
+
+  Outputx += outputSumx - kd * dInput;
+  if (Outputx > outMax) Outputx = outMax;
+  else if (Outputx < outMin) Outputx = outMin;
+  
+  lastInputx = Inputx;
+  lastErrx = error;
+}
+
 void setup() {
   KP = 1;
 KI = 0;
-KD = 0.4;
+KD = 2;
 Setpoint = 0;
   Serial.begin(115200);
   //initSD();
@@ -670,6 +698,7 @@ Setpoint = 0;
   //initAltimeter();
   initServos();
   pinMode(7, INPUT);
+  pinMode(6, INPUT);
   buzzerSuccess();
   //previousMillis = millis();
   Serial.println("SETUP COMPLETE. STARTING LOOP");
@@ -686,6 +715,16 @@ void updateGains() {
     int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
     KI = (double)kiVal / 10.0;
   }
+
+    if(!digitalRead(7)){
+    int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KI = (double)kiVal / 10.0;
+  }
+
+  if(digitalRead(6)){
+    int kdVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KD = (double)kdVal / 100.0;
+  }
 }
 
 void loop() {
@@ -698,12 +737,14 @@ void loop() {
           IMUChrono.restart();
           updateIMU();
           Input = pitch;
+          Inputx = roll;
           updateGains();
           setTunings(KP,KI,KD,P_ON_M);
           
           computePID(123.0, 69.0);
-          
+          computePIDx(107, 53);
           y_servo.write((int)Output);
+          x_servo.write((int)Outputx);
           
         }
 
