@@ -386,18 +386,17 @@ void printData() {
   Serial.print(" ");
   Serial.print(roll);
   Serial.print(" ");
-  Serial.print(x_accel);
+  Serial.print(KP);
   Serial.print(" ");
-  Serial.print(y_accel);
+  Serial.print(KI);
   Serial.print(" ");
-  Serial.print(z_accel);
+  Serial.print(KD);
   Serial.print(" ");
-  Serial.print(x_gyro);
+  Serial.print(Input);
   Serial.print(" ");
-  Serial.print(y_gyro);
+  Serial.print(Output);
   Serial.print(" ");
-  Serial.print(z_gyro);
-  Serial.print(" ");
+
   Serial.println();
 }
 
@@ -647,7 +646,17 @@ KP = 1;
 KI = 0;
 KD = 0;
 
+void updateGains() {
+  if(digitalRead(7)){
+    int kpVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KP = (double)kpVal / 100.0;
+  }
 
+  if(!digitalRead(7)){
+    int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KI = (double)kiVal / 1000.0;
+  }
+}
 
 void loop() {
 
