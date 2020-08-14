@@ -585,6 +585,7 @@ double Input, Output, Setpoint;
 double errSum, lastErr, lastInput;
 double kp, ki, kd;
 double ITerm;
+double outputSum
 
 void
 
@@ -595,7 +596,6 @@ int pidDirection = DIRECT;
 #define P_ON_M 0
 #define P_ON_E 1
 bool pOnE = true;
-double initInput;
 double PTerm = 0;
 
 void setTunings(double Kp, double Ki, double Kd, int pOn) {
@@ -615,23 +615,20 @@ void setTunings(double Kp, double Ki, double Kd, int pOn) {
 void computePID(double outMax, double outMin) {
 
   double error = Setpoint - Input;
-  ITerm += (ki * error);
-  if (ITerm > outMax) ITerm = outMax;
-  else if*ITerm < outMin) ITerm = outMin;
   double dInput = (Input - lastInput);
+  outputSum += (ki * error);
 
-  if(pOnE) Output = kp * error;
-  else{
-    PTerm -= kp * dInput;
-    Output = PTerm;
-  }
+  if (!pOnE) outputSum -= kp * dInput;
 
-  Output += ITerm - kd * dInput;
+  if (pOnE) Output = kp * error;
+  else Output = 0;
+
+  Output += outputSum - kd * dInput;
   if (Output > outMax) Output = outMax;
-    else if (Output < outMin) Output = outMin;
-      lastInput = Input;
-      lastErr = error;
-    }
+  else if (Output < outMin) Output = outMin;
+  lastInput = Input;
+  lastErr = error;
+}
 
 void setup() {
   Serial.begin(115200);
