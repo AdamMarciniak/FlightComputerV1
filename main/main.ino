@@ -401,6 +401,40 @@ void printData() {
   Serial.println();
 }
 
+
+void displayCalStatus(void)
+{
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+
+  while (1) {
+    bno.getCalibration(&system, &gyro, &accel, &mag);
+
+    /* The data should be ignored until the system calibration is > 0 */
+    Serial.print("\t");
+    if (!system)
+    {
+      Serial.print("! ");
+    }
+
+    /* Display the individual values */
+    Serial.print("Sys:");
+    Serial.print(system, DEC);
+    Serial.print(" G:");
+    Serial.print(gyro, DEC);
+    Serial.print(" A:");
+    Serial.print(accel, DEC);
+    Serial.print(" M:");
+    Serial.println(mag, DEC);
+  }
+
+
+}
+
+
 void updateIMU() {
   sensors_event_t orientationData , angVelocityData , linearAccelData;
   bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
@@ -546,10 +580,64 @@ void saveDataToArray() {
   }
 }
 
+unsigned long lastTime;
+double Input, Output, Setpoint;
+double errSum, lastErr, lastInput;
+double kp, ki, kd;
+double ITerm;
+
+void
+
+#define PID_RATE_MS 10.0
+#define DIRECT 0
+#define REVERSE 1
+int pidDirection = DIRECT;
+#define P_ON_M 0
+#define P_ON_E 1
+bool pOnE = true;
+double initInput;
+double PTerm = 0;
+
+void setTunings(double Kp, double Ki, double Kd, int pOn) {
+  kp = Kp;
+  ki = Ki * (double)PID_RATE_MS / 1000.0;
+  kd = Kd / (double)PID_RATE_MS / 1000.0;
+
+  pOnE = pOn == P_ON_E;
+
+  if (pidDirection == REVERSE) {
+    kp = (0 - kp);
+    ki = (0 - ki);
+    kd = (0 - kd);
+  }
+}
+
+void computePID(double outMax, double outMin) {
+
+  double error = Setpoint - Input;
+  ITerm += (ki * error);
+  if (ITerm > outMax) ITerm = outMax;
+  else if*ITerm < outMin) ITerm = outMin;
+  double dInput = (Input - lastInput);
+
+  if(pOnE) Output = kp * error;
+  else{
+    PTerm -= kp * dInput;
+    Output = PTerm;
+  }
+
+  Output += ITerm - kd * dInput;
+  if (Output > outMax) Output = outMax;
+    else if (Output < outMin) Output = outMin;
+      lastInput = Input;
+      lastErr = error;
+    }
+
 void setup() {
   Serial.begin(115200);
   initSD();
   initIMU();
+  //displayCalStatus();
   initAltimeter();
   initServos();
   buzzerSuccess();
