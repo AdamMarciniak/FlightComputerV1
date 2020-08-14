@@ -207,7 +207,7 @@ void initServos() {
   delay(500);
   y_servo.write(Y_SERVO_CENTER);
 
-  rotateServos();
+  //rotateServos();
   x_servo.write(X_SERVO_CENTER);
   y_servo.write(Y_SERVO_CENTER);
 }
@@ -277,6 +277,27 @@ bool pyro_check = false;
 bool printed = false;
 
 bool idleBuzzerState = false;
+
+unsigned long lastTime;
+double Input, Output, Setpoint;
+double errSum, lastErr, lastInput;
+double kp, ki, kd;
+double ITerm;
+double outputSum;
+
+
+#define PID_RATE_MS 10.0
+#define DIRECT 0
+#define REVERSE 1
+int pidDirection = DIRECT;
+#define P_ON_M 0
+#define P_ON_E 1
+bool pOnE = true;
+double PTerm = 0;
+
+double KP, KI, KD;
+
+
 
 void buzz(int melody[], int durations[], int melodySize) {
   for (int thisNote = 0; thisNote < melodySize; thisNote++) {
@@ -579,22 +600,7 @@ void saveDataToArray() {
   }
 }
 
-unsigned long lastTime;
-double Input, Output, Setpoint;
-double errSum, lastErr, lastInput;
-double kp, ki, kd;
-double ITerm;
-double outputSum;
 
-
-#define PID_RATE_MS 10.0
-#define DIRECT 0
-#define REVERSE 1
-int pidDirection = DIRECT;
-#define P_ON_M 0
-#define P_ON_E 1
-bool pOnE = true;
-double PTerm = 0;
 
 void setTunings(double Kp, double Ki, double Kd, int pOn) {
   kp = Kp;
@@ -610,6 +616,26 @@ void setTunings(double Kp, double Ki, double Kd, int pOn) {
   }
 }
 
+//void computePID(double outMax, double outMin)
+//{
+//
+//      /*Compute all the working error variables*/
+//      double error = Setpoint - Input;
+//      ITerm += (ki * error);
+//      if(ITerm> outMax) ITerm= outMax;
+//      else if(ITerm< outMin) ITerm= outMin;
+//      double dInput = (Input - lastInput);
+// 
+//      /*Compute PID Output*/
+//      Output = kp * error + ITerm - kd * dInput;
+//      if(Output > outMax) Output = outMax;
+//      else if(Output < outMin) Output = outMin;
+// 
+//      /*Remember some variables for next time*/
+//      lastInput = Input;
+//   
+//}
+
 void computePID(double outMax, double outMin) {
 
   double error = Setpoint - Input;
@@ -618,17 +644,25 @@ void computePID(double outMax, double outMin) {
 
   if (!pOnE) outputSum -= kp * dInput;
 
+  if(outputSum > outMax) outputSum= outMax;      
+  else if(outputSum < outMin) outputSum= outMin; 
+
   if (pOnE) Output = kp * error;
   else Output = 0;
 
   Output += outputSum - kd * dInput;
   if (Output > outMax) Output = outMax;
   else if (Output < outMin) Output = outMin;
+  
   lastInput = Input;
   lastErr = error;
 }
 
 void setup() {
+  KP = 1;
+KI = 0;
+KD = 0.4;
+Setpoint = 0;
   Serial.begin(115200);
   //initSD();
   initIMU();
@@ -641,20 +675,16 @@ void setup() {
   Serial.println("SETUP COMPLETE. STARTING LOOP");
 }
 
-double KP, KI, KD;
-KP = 1;
-KI = 0;
-KD = 0;
 
 void updateGains() {
   if(digitalRead(7)){
     int kpVal = map(analogRead(23), 0, 1024, 10, 1000);
-    KP = (double)kpVal / 100.0;
+    KP = (double)kpVal / 10.0;
   }
 
   if(!digitalRead(7)){
     int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
-    KI = (double)kiVal / 1000.0;
+    KI = (double)kiVal / 10.0;
   }
 }
 
@@ -662,14 +692,14 @@ void loop() {
 
   switch (currentState) {
     case PAD_IDLE: {
-        buzzerIdle();
+        //buzzerIdle();
 
         if (IMUChrono.hasPassed(IMU_UPDATE_RATE_MS)) {
           IMUChrono.restart();
           updateIMU();
           Input = pitch;
-          
-          setTunings(KP,KI,KD,P_ON_E);
+          updateGains();
+          setTunings(KP,KI,KD,P_ON_M);
           
           computePID(123.0, 69.0);
           
