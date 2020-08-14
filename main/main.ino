@@ -585,9 +585,8 @@ double Input, Output, Setpoint;
 double errSum, lastErr, lastInput;
 double kp, ki, kd;
 double ITerm;
-double outputSum
+double outputSum;
 
-void
 
 #define PID_RATE_MS 10.0
 #define DIRECT 0
@@ -632,15 +631,23 @@ void computePID(double outMax, double outMin) {
 
 void setup() {
   Serial.begin(115200);
-  initSD();
+  //initSD();
   initIMU();
   //displayCalStatus();
-  initAltimeter();
+  //initAltimeter();
   initServos();
+  pinMode(7, INPUT);
   buzzerSuccess();
-  previousMillis = millis();
+  //previousMillis = millis();
   Serial.println("SETUP COMPLETE. STARTING LOOP");
 }
+
+double KP, KI, KD;
+KP = 1;
+KI = 0;
+KD = 0;
+
+
 
 void loop() {
 
@@ -651,24 +658,32 @@ void loop() {
         if (IMUChrono.hasPassed(IMU_UPDATE_RATE_MS)) {
           IMUChrono.restart();
           updateIMU();
+          Input = pitch;
+          
+          setTunings(KP,KI,KD,P_ON_E);
+          
+          computePID(123.0, 69.0);
+          
+          y_servo.write((int)Output);
+          
         }
 
-        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
-          altimeterChrono.restart();
-          updateAltimeter();
-        }
+//        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
+//          altimeterChrono.restart();
+//          updateAltimeter();
+//        }
 
         if (printChrono.hasPassed(LOG_RATE_MS)) {
           printChrono.restart();
           printData();
-          saveDataToArray();
+          //saveDataToArray();
         }
 
-        if (dataStep == maxSteps - 1) {
-          currentState = IGNITION_FIRING;
-          Serial.println("PRINTING DATA...");
-          delay(1000);
-        }
+//        if (dataStep == maxSteps - 1) {
+//          currentState = IGNITION_FIRING;
+//          Serial.println("PRINTING DATA...");
+//          delay(1000);
+//        }
         break;
       }
 
