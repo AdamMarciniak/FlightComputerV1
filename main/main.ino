@@ -207,7 +207,7 @@ void initServos() {
   delay(500);
   y_servo.write(Y_SERVO_CENTER);
 
-  rotateServos();
+  //rotateServos();
   x_servo.write(X_SERVO_CENTER);
   y_servo.write(Y_SERVO_CENTER);
 }
@@ -277,6 +277,33 @@ bool pyro_check = false;
 bool printed = false;
 
 bool idleBuzzerState = false;
+
+unsigned long lastTime;
+double Input, Output, Setpoint;
+double errSum, lastErr, lastInput;
+double kp, ki, kd;
+double ITerm;
+double outputSum;
+
+unsigned long lastTimex;
+double Inputx, Outputx, Setpointx;
+double errSumx, lastErrx, lastInputx;
+double ITermx;
+double outputSumx;
+
+
+#define PID_RATE_MS 10.0
+#define DIRECT 0
+#define REVERSE 1
+int pidDirection = DIRECT;
+#define P_ON_M 0
+#define P_ON_E 1
+bool pOnE = true;
+double PTerm = 0;
+double PTermx = 0;
+double KP, KI, KD;
+
+
 
 void buzz(int melody[], int durations[], int melodySize) {
   for (int thisNote = 0; thisNote < melodySize; thisNote++) {
@@ -374,30 +401,29 @@ void initIMU() {
 }
 
 void printData() {
-  Serial.print(deltaT);
-  Serial.print(" ");
-  Serial.print(stateStrings[currentState]);
-  Serial.print(" ");
-  Serial.print(altimeter_alt_rel);
-  Serial.print(" ");
-  Serial.print(yaw);
+//  Serial.print(deltaT);
+//  Serial.print(" ");
+//  Serial.print(stateStrings[currentState]);
+//  Serial.print(" ");
+//  Serial.print(altimeter_alt_rel);
+//  Serial.print(" ");
+//  Serial.print(yaw);
   Serial.print(" ");
   Serial.print(pitch);
   Serial.print(" ");
   Serial.print(roll);
   Serial.print(" ");
-  Serial.print(x_accel);
-  Serial.print(" ");
-  Serial.print(y_accel);
-  Serial.print(" ");
-  Serial.print(z_accel);
-  Serial.print(" ");
-  Serial.print(x_gyro);
-  Serial.print(" ");
-  Serial.print(y_gyro);
-  Serial.print(" ");
-  Serial.print(z_gyro);
-  Serial.print(" ");
+//  Serial.print(KP);
+//  Serial.print(" ");
+//  Serial.print(KI);
+//  Serial.print(" ");
+//  Serial.print(KD);
+//  Serial.print(" ");
+//  Serial.print(Input);
+//  Serial.print(" ");
+//  Serial.print(Output);
+//  Serial.print(" ");
+
   Serial.println();
 }
 
@@ -560,7 +586,7 @@ bool checkPyros() {
     Serial.println();
     return true;
   }
-}
+};
 
 void saveDataToArray() {
   if (dataStep < maxSteps) {
@@ -580,23 +606,7 @@ void saveDataToArray() {
   }
 }
 
-unsigned long lastTime;
-double Input, Output, Setpoint;
-double errSum, lastErr, lastInput;
-double kp, ki, kd;
-double ITerm;
-double outputSum
 
-void
-
-#define PID_RATE_MS 10.0
-#define DIRECT 0
-#define REVERSE 1
-int pidDirection = DIRECT;
-#define P_ON_M 0
-#define P_ON_E 1
-bool pOnE = true;
-double PTerm = 0;
 
 void setTunings(double Kp, double Ki, double Kd, int pOn) {
   kp = Kp;
@@ -612,6 +622,26 @@ void setTunings(double Kp, double Ki, double Kd, int pOn) {
   }
 }
 
+//void computePID(double outMax, double outMin)
+//{
+//
+//      /*Compute all the working error variables*/
+//      double error = Setpoint - Input;
+//      ITerm += (ki * error);
+//      if(ITerm> outMax) ITerm= outMax;
+//      else if(ITerm< outMin) ITerm= outMin;
+//      double dInput = (Input - lastInput);
+// 
+//      /*Compute PID Output*/
+//      Output = kp * error + ITerm - kd * dInput;
+//      if(Output > outMax) Output = outMax;
+//      else if(Output < outMin) Output = outMin;
+// 
+//      /*Remember some variables for next time*/
+//      lastInput = Input;
+//   
+//}
+
 void computePID(double outMax, double outMin) {
 
   double error = Setpoint - Input;
@@ -620,43 +650,108 @@ void computePID(double outMax, double outMin) {
 
   if (!pOnE) outputSum -= kp * dInput;
 
+  if(outputSum > outMax) outputSum= outMax;      
+  else if(outputSum < outMin) outputSum= outMin; 
+
   if (pOnE) Output = kp * error;
   else Output = 0;
 
   Output += outputSum - kd * dInput;
   if (Output > outMax) Output = outMax;
   else if (Output < outMin) Output = outMin;
+  
   lastInput = Input;
   lastErr = error;
 }
 
+void computePIDx(double outMax, double outMin) {
+
+  double error = Setpointx - Inputx;
+  double dInput = (Inputx - lastInputx);
+  outputSumx += (ki * error);
+
+  if (!pOnE) outputSumx -= kp * dInput;
+
+  if(outputSumx > outMax) outputSumx= outMax;      
+  else if(outputSumx < outMin) outputSumx= outMin; 
+
+  if (pOnE) Outputx = kp * error;
+  else Outputx = 0;
+
+  Outputx += outputSumx - kd * dInput;
+  if (Outputx > outMax) Outputx = outMax;
+  else if (Outputx < outMin) Outputx = outMin;
+  
+  lastInputx = Inputx;
+  lastErrx = error;
+}
+
 void setup() {
+  KP = 1;
+KI = 0;
+KD = 2;
+Setpoint = 0;
   Serial.begin(115200);
-  initSD();
+  //initSD();
   initIMU();
   //displayCalStatus();
-  initAltimeter();
+  //initAltimeter();
   initServos();
+  pinMode(7, INPUT);
+  pinMode(6, INPUT);
   buzzerSuccess();
-  previousMillis = millis();
+  //previousMillis = millis();
   Serial.println("SETUP COMPLETE. STARTING LOOP");
+}
+
+
+void updateGains() {
+  if(digitalRead(7)){
+    int kpVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KP = (double)kpVal / 10.0;
+  }
+
+  if(!digitalRead(7)){
+    int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KI = (double)kiVal / 10.0;
+  }
+
+    if(!digitalRead(7)){
+    int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KI = (double)kiVal / 10.0;
+  }
+
+  if(digitalRead(6)){
+    int kdVal = map(analogRead(23), 0, 1024, 10, 1000);
+    KD = (double)kdVal / 100.0;
+  }
 }
 
 void loop() {
 
   switch (currentState) {
     case PAD_IDLE: {
-        buzzerIdle();
+        //buzzerIdle();
 
         if (IMUChrono.hasPassed(IMU_UPDATE_RATE_MS)) {
           IMUChrono.restart();
           updateIMU();
+          Input = pitch;
+          Inputx = roll;
+          updateGains();
+          setTunings(KP,KI,KD,P_ON_M);
+          
+          computePID(123.0, 69.0);
+          computePIDx(107, 53);
+          y_servo.write((int)Output);
+          x_servo.write((int)Outputx);
+          
         }
 
-        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
-          altimeterChrono.restart();
-          updateAltimeter();
-        }
+//        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
+//          altimeterChrono.restart();
+//          updateAltimeter();
+//        }
 
         if (printChrono.hasPassed(LOG_RATE_MS)) {
           printChrono.restart();
