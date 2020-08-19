@@ -401,28 +401,28 @@ void initIMU() {
 }
 
 void printData() {
-//  Serial.print(deltaT);
-//  Serial.print(" ");
-//  Serial.print(stateStrings[currentState]);
-//  Serial.print(" ");
-//  Serial.print(altimeter_alt_rel);
-//  Serial.print(" ");
-//  Serial.print(yaw);
+  //  Serial.print(deltaT);
+  //  Serial.print(" ");
+  //  Serial.print(stateStrings[currentState]);
+  //  Serial.print(" ");
+  //  Serial.print(altimeter_alt_rel);
+  //  Serial.print(" ");
+  //  Serial.print(yaw);
   Serial.print(" ");
   Serial.print(pitch);
   Serial.print(" ");
   Serial.print(roll);
   Serial.print(" ");
-//  Serial.print(KP);
-//  Serial.print(" ");
-//  Serial.print(KI);
-//  Serial.print(" ");
-//  Serial.print(KD);
-//  Serial.print(" ");
-//  Serial.print(Input);
-//  Serial.print(" ");
-//  Serial.print(Output);
-//  Serial.print(" ");
+  //  Serial.print(KP);
+  //  Serial.print(" ");
+  //  Serial.print(KI);
+  //  Serial.print(" ");
+  //  Serial.print(KD);
+  //  Serial.print(" ");
+  //  Serial.print(Input);
+  //  Serial.print(" ");
+  //  Serial.print(Output);
+  //  Serial.print(" ");
 
   Serial.println();
 }
@@ -631,15 +631,15 @@ void setTunings(double Kp, double Ki, double Kd, int pOn) {
 //      if(ITerm> outMax) ITerm= outMax;
 //      else if(ITerm< outMin) ITerm= outMin;
 //      double dInput = (Input - lastInput);
-// 
+//
 //      /*Compute PID Output*/
 //      Output = kp * error + ITerm - kd * dInput;
 //      if(Output > outMax) Output = outMax;
 //      else if(Output < outMin) Output = outMin;
-// 
+//
 //      /*Remember some variables for next time*/
 //      lastInput = Input;
-//   
+//
 //}
 
 void computePID(double outMax, double outMin) {
@@ -650,8 +650,8 @@ void computePID(double outMax, double outMin) {
 
   if (!pOnE) outputSum -= kp * dInput;
 
-  if(outputSum > outMax) outputSum= outMax;      
-  else if(outputSum < outMin) outputSum= outMin; 
+  if (outputSum > outMax) outputSum = outMax;
+  else if (outputSum < outMin) outputSum = outMin;
 
   if (pOnE) Output = kp * error;
   else Output = 0;
@@ -659,7 +659,7 @@ void computePID(double outMax, double outMin) {
   Output += outputSum - kd * dInput;
   if (Output > outMax) Output = outMax;
   else if (Output < outMin) Output = outMin;
-  
+
   lastInput = Input;
   lastErr = error;
 }
@@ -672,8 +672,8 @@ void computePIDx(double outMax, double outMin) {
 
   if (!pOnE) outputSumx -= kp * dInput;
 
-  if(outputSumx > outMax) outputSumx= outMax;      
-  else if(outputSumx < outMin) outputSumx= outMin; 
+  if (outputSumx > outMax) outputSumx = outMax;
+  else if (outputSumx < outMin) outputSumx = outMin;
 
   if (pOnE) Outputx = kp * error;
   else Outputx = 0;
@@ -681,21 +681,21 @@ void computePIDx(double outMax, double outMin) {
   Outputx += outputSumx - kd * dInput;
   if (Outputx > outMax) Outputx = outMax;
   else if (Outputx < outMin) Outputx = outMin;
-  
+
   lastInputx = Inputx;
   lastErrx = error;
 }
 
 void setup() {
   KP = 1;
-KI = 0;
-KD = 2;
-Setpoint = 0;
+  KI = 0;
+  KD = 2;
+  Setpoint = 0;
   Serial.begin(115200);
-  //initSD();
+  initSD();
   initIMU();
   //displayCalStatus();
-  //initAltimeter();
+  initAltimeter();
   initServos();
   pinMode(7, INPUT);
   pinMode(6, INPUT);
@@ -706,22 +706,22 @@ Setpoint = 0;
 
 
 void updateGains() {
-  if(digitalRead(7)){
+  if (digitalRead(7)) {
     int kpVal = map(analogRead(23), 0, 1024, 10, 1000);
     KP = (double)kpVal / 10.0;
   }
 
-  if(!digitalRead(7)){
+  if (!digitalRead(7)) {
     int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
     KI = (double)kiVal / 10.0;
   }
 
-    if(!digitalRead(7)){
+  if (!digitalRead(7)) {
     int kiVal = map(analogRead(23), 0, 1024, 10, 1000);
     KI = (double)kiVal / 10.0;
   }
 
-  if(digitalRead(6)){
+  if (digitalRead(6)) {
     int kdVal = map(analogRead(23), 0, 1024, 10, 1000);
     KD = (double)kdVal / 100.0;
   }
@@ -739,19 +739,19 @@ void loop() {
           Input = pitch;
           Inputx = roll;
           updateGains();
-          setTunings(KP,KI,KD,P_ON_M);
-          
+          setTunings(KP, KI, KD, P_ON_M);
+
           computePID(123.0, 69.0);
           computePIDx(107, 53);
           y_servo.write((int)Output);
           x_servo.write((int)Outputx);
-          
+
         }
 
-//        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
-//          altimeterChrono.restart();
-//          updateAltimeter();
-//        }
+        if (altimeterChrono.hasPassed(ALTIMETER_UPDATE_RATE_MS)) {
+          altimeterChrono.restart();
+          updateAltimeter();
+        }
 
         if (printChrono.hasPassed(LOG_RATE_MS)) {
           printChrono.restart();
